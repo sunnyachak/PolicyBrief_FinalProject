@@ -1,0 +1,184 @@
+---
+title: "Policy Brief_Project"
+format: html
+---
+# Install libraries
+```{python}
+!pip install praw
+```
+
+
+```{python}
+import praw
+```
+
+# Setting API Reddit
+
+```{python}
+# Initialize Reddit API
+reddit = praw.Reddit(client_id='U4bC9Ns5jKkIwaDgqlkwxA',
+                     client_secret='u3M4sne6NdVjGN-D-ohYpl9FH5mMow',
+                     user_agent='my-app by u/Upstairs_School135')
+
+# Define subreddit and number of posts to retrieve
+subreddit_name = "meToo"
+num_posts = 2000000000
+
+# Get top posts from the subreddit
+subreddit = reddit.subreddit("meToo")
+hot_posts = subreddit.hot(limit=50)
+
+# Print post titles and scores
+print("hot", num_posts, "posts from", subreddit_name, ":\n")
+for post in hot_posts:
+    
+    print("Score:", post.score)
+    print("URL:", post.url)
+    print("author:", post.author)
+    print("Number of comments:", )
+
+    print("-" * 20)
+    post.comments.replace_more(limit=None)
+    comments = post.comments.list()    
+    # Iterate through comments
+    for comment in comments:
+        
+        print("Title:", post.title)
+        print("Post body:", post.selftext.replace('\n',''))
+        print("Comment:", comment.body.replace('\n',''))
+
+```
+
+# Preprocessing and sentiment Analysis On r/MeToo
+```{python}
+# Define subreddit and number of posts to retrieve
+from nltk.sentiment.vader import SentimentIntensityAnalyzer
+import re
+subreddit_name = "metoo"
+num_comments = 20
+def remove_special_characters(text, remove_digits=True):
+    pattern=r'[^a-zA-z0-9\s]'
+    text=re.sub(pattern,'',text)
+    return text
+
+# Get top posts from the subreddit
+subreddit = reddit.subreddit("metoo")
+hot_posts = subreddit.hot(limit=2000000000)
+analyzer = SentimentIntensityAnalyzer()
+# Print post titles and scores
+#print("hot", num_posts, "posts from", subreddit_name, ":\n")
+
+for post in hot_posts:
+    if  num_comments>1:
+      #print("Score:", post.score)
+      #print("URL:", post.url)
+      #print("author:", post.author)
+      #print("Number of comments:", )
+
+      #print("-" * 20)
+      post.comments.replace_more(limit=None)
+      comments = post.comments.list() 
+
+            
+    
+      # Iterate through comments
+      for comment in comments:
+          #print("Comment:", comment.body.replace('\n',''))
+          scores = analyzer.polarity_scores(comment.body.replace('\n',''))
+          #print("Title:", post.title)
+          #print("Post body:", post.selftext.replace('\n',''))
+          #print("Number of comments:",len(comments))
+          #print(scores)
+          print(remove_special_characters(comment.body.replace('\n',''))+"***"+  str(scores['compound']) + ',')
+          num_comments= num_comments-1
+
+```
+
+# Preprocessing and Topic Modelling on subreddit "SexualAssault" & "AfterTheSilence"
+
+```{python}
+
+# Import necessary libraries
+from nltk.corpus import stopwords  # Stop words removal
+from nltk.tokenize import word_tokenize  # Tokenization
+from sklearn.feature_extraction.text import TfidfVectorizer  # Feature extraction
+from sklearn.decomposition import LatentDirichletAllocation  # LDA model
+from wordcloud import WordCloud
+import matplotlib.pyplot as plt
+
+
+# Specify subreddit and number of comments
+subreddit_name = "SexualAssault"
+#subreddit_name = "AfterTheSilence"
+num_comments = 2000000000
+
+# Get comments from Reddit (replace with your chosen subreddit)
+subreddit = reddit.subreddit("SexualAssault")
+#subreddit = reddit.subreddit("AfterTheSilence")
+comments = []
+for submission in subreddit.hot(limit=num_comments):
+  comments.extend(submission.comments.list())
+
+# Preprocess text data (clean and remove stop words)
+stop_words = stopwords.words('english')
+#submission.replace_more_comments()
+
+processed_comments = []
+for comment in comments:
+  try:
+    text = comment.body.lower()  # Convert to lowercase
+    text = ''.join([char for char in text if char.isalnum() or char == " "])  # Remove punctuation
+    tokens = word_tokenize(text)
+    filtered_words = [word for word in tokens if word not in stop_words]
+    processed_comments.append(' '.join(filtered_words))
+  except:
+    continue   
+
+# Feature extraction using TF-IDF
+vectorizer = TfidfVectorizer(max_features=1000)  # Adjust max_features as needed
+tfidf_matrix = vectorizer.fit_transform(processed_comments)
+
+# Define number of topics
+n_topics = 5  # Adjust number of topics as needed
+lda_model = LatentDirichletAllocation(n_components=n_topics, random_state=0)
+lda_model.fit(tfidf_matrix)
+
+# Print top words for each topic
+top_words_per_topic = []  # List to store top words for each topic
+for topic_idx, topic in enumerate(lda_model.components_):
+  print("Topic", topic_idx + 1, ":")
+  top_words = [vectorizer.get_feature_names_out()[i] for i in topic.argsort()[-10:]]
+  print(top_words)
+  top_words_per_topic.append(top_words)
+  print("\n")
+
+
+
+# Create word clouds for each topic
+for topic_idx, topic_words in enumerate(top_words_per_topic):
+  # Join the top words into a string (separate by space)
+  topic_text = " ".join(topic_words)
+  WC=WordCloud(width=1000,height=500,max_words=500,min_font_size=3,background_color="white")
+
+  wordcloud = WC.generate(topic_text)
+  # plt.imshow(wordcloud)
+  # plt.axis("off")
+  # plt.show()
+  
+# ... your code for topic modeling and getting top words per topic ...
+
+all_top_words = []
+for topic_words in top_words_per_topic:
+    all_top_words.extend(topic_words)  # Extend the list with all topic words
+
+# Create the word cloud using all_top_words
+topic_text = " ".join(all_top_words)
+WC=WordCloud(width=1000,height=500,max_words=500,min_font_size=3,background_color="white")
+wordcloud = WC.generate(topic_text)
+plt.imshow(wordcloud)
+plt.axis("off")
+plt.show()
+
+
+```
+
